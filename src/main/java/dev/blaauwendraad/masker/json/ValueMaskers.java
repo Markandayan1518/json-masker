@@ -4,7 +4,11 @@ import dev.blaauwendraad.masker.json.config.KeyMaskingConfig;
 import dev.blaauwendraad.masker.json.util.Utf8Util;
 import org.jspecify.annotations.Nullable;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.util.Base64;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -74,6 +78,48 @@ public final class ValueMaskers {
         return describe(
                 "null (literal)",
                 context -> context.replaceBytes(0, context.byteLength(), replacementBytes, 1)
+        );
+    }
+
+    /**
+     * Encrypts the value using AES and replaces the original bytes with the
+     * Base64 encoded encrypted string. The encrypted value is always written as
+     * a JSON string regardless of the original type.
+     *
+     * @param secret the secret key used for encryption (16 bytes recommended)
+     * @return the {@link ValueMasker} that performs encryption
+     */
+    public static ValueMasker.AnyValueMasker encryptAES(String secret) {
+        SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "AES");
+        return describe(
+                "AES encryption",
+                context -> {
+                    try {
+                        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+                        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+                        byte[] input = context.asString(0, context.byteLength()).getBytes(StandardCharsets.UTF_8);
+                        byte[] encrypted = cipher.doFinal(input);
+                        String encoded = Base64.getEncoder().encodeToString(encrypted);
+                        byte[] replacementBytes = ('"' + encoded + '"').getBytes(StandardCharsets.UTF_8);
+                        context.replaceBytes(0, context.byteLength(), replacementBytes, 1);
+                    } catch (GeneralSecurityException e) {
+                        throw new RuntimeException("Failed to encrypt value", e);
+                    }
+                });
+    }
+
+    /**
+     * Removes the value completely from the output JSON.
+     * <p>Note that the resulting JSON might be invalid if the key remains in the
+     * output. This utility is mainly useful for low level usages where JSON
+     * structure is controlled by the caller.</p>
+     *
+     * @return the {@link ValueMasker} that hides the value
+     */
+    public static ValueMasker.AnyValueMasker hide() {
+        return describe(
+                "hide value",
+                context -> context.replaceBytes(0, context.byteLength(), new byte[0], 1)
         );
     }
 
