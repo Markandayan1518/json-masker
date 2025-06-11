@@ -468,6 +468,26 @@ class ValueMaskersTest {
         Assertions.assertThat(ByteValueMaskerContext.maskStringWith("hello", valueMasker)).isEqualTo("\"h*l*o\"");
     }
 
+    @Test
+    void encryptAes() {
+        ValueMasker.AnyValueMasker valueMasker = ValueMaskers.encryptAES("secretsecret1234");
+
+        Assertions.assertThat(ByteValueMaskerContext.maskStringWith("secret", valueMasker))
+                .isEqualTo("\"fzcyGy7d2XCYwpugqhTQCA==\"");
+    }
+
+    @Test
+    void hide() {
+        ValueMasker.AnyValueMasker valueMasker = ValueMaskers.hide();
+
+        Assertions.assertThat(ByteValueMaskerContext.maskStringWith("secret", valueMasker))
+                .isEqualTo("");
+        Assertions.assertThat(ByteValueMaskerContext.maskNumberWith(12345, valueMasker))
+                .isEqualTo("");
+        Assertions.assertThat(ByteValueMaskerContext.maskBooleanWith(true, valueMasker))
+                .isEqualTo("");
+    }
+
     private byte[] everyOtherCharacterMasked(ValueMaskerContext valueMaskerContext) {
         byte[] maskResult = new byte[valueMaskerContext.byteLength()];
         maskResult[0] = '"';

@@ -46,6 +46,7 @@ Finally, no additional third-party runtime dependencies  are required to use thi
 * Use **block-list** (`maskKeys`) or **allow-list** (`allowKeys`) for masking
 * Limited support for JSONPath masking in both  **block-list** (`maskJsonPaths`) and **allow-list** (`allowJsonPaths`)
   modes
+* AES encryption and hiding utilities for sensitive values
 * Masking a valid JSON will always produce a valid JSON. If the input is not valid JSON, processing is guaranteed to
   complete, but the resulting masked output is undefined
 
@@ -749,6 +750,51 @@ String maskedJson = jsonMasker.mask(json);
   "email": "ag***iy@gmail.com"
 }
 ```
+
+### Encrypting or hiding values
+
+The `ValueMaskers` class also includes utilities to encrypt or remove sensitive values.
+
+#### Usage
+
+```java
+var jsonMasker = JsonMasker.getMasker(
+        JsonMaskingConfig.builder()
+                .maskKeys("creditCard", KeyMaskingConfig.builder()
+                        .maskStringsWith(ValueMaskers.encryptAES("secretsecret1234"))
+                        .build())
+                .maskKeys("token", KeyMaskingConfig.builder()
+                        .maskStringsWith(ValueMaskers.hide())
+                        .maskNumbersWith(ValueMaskers.hide())
+                        .maskBooleansWith(ValueMaskers.hide())
+                        .build())
+                .build()
+);
+
+String maskedJson = jsonMasker.mask(json);
+```
+
+#### Input
+
+```json
+{
+  "creditCard": "4111 1111 1111 1111",
+  "token": "XYZ123"
+}
+```
+
+#### Output
+
+```json
+{
+  "creditCard": "fzcyGy7d2XCYwpugqhTQCA==",
+  "token":
+}
+```
+
+> **Note**
+> The `hide()` masker removes only the value bytes. If the JSON element must be
+> removed completely, the key needs to be handled separately.
 
 ## Dependencies
 
